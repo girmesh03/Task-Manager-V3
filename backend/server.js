@@ -9,7 +9,7 @@ import connectDB from "./config/db.js";
 import corsOptions from "./config/corsOptions.js";
 
 // mock data
-import { insertManyUsers, deleteManyUsers } from "./data/UsersData.js";
+// import { insertManyUsers, deleteManyUsers } from "./data/UsersData.js";
 
 const PORT = process.env.PORT || 5000;
 
@@ -36,8 +36,8 @@ connectDB();
 mongoose.connection.once("open", async () => {
   console.log("Connected to MongoDB");
 
-  await deleteManyUsers();
-  await insertManyUsers();
+  // await deleteManyUsers();
+  // await insertManyUsers();
 
   server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 });
