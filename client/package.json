@@ -20,6 +20,7 @@
     "@mui/x-date-pickers": "^7.24.1",
     "@mui/x-tree-view": "^7.24.1",
     "@reduxjs/toolkit": "^2.5.1",
+    "dayjs": "^1.11.13",
     "dotenv": "^16.4.7",
     "jspdf": "^2.5.2",
     "jspdf-autotable": "^3.8.4",
