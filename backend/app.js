@@ -9,6 +9,8 @@ import globalErrorHandler from "./controllers/ErrorController.js";
 import CustomError from "./utils/CustomError.js";
 
 import AuthRoutes from "./routes/AuthRoutes.js";
+import StatisticsRoutes from "./routes/StatisticsRoutes.js";
+import TaskRoutes from "./routes/TaskRoutes.js";
 
 const app = express();
 
@@ -20,6 +22,8 @@ app.use(morgan("dev"));
 
 // Routes
 app.use("/api/auth", AuthRoutes);
+app.use("/api/statistics", StatisticsRoutes);
+app.use("/api/tasks", TaskRoutes);
 
 app.all("*", (req, res, next) => {
   next(new CustomError(`Can't find ${req.originalUrl} on this server!`, 404));
