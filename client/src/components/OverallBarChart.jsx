@@ -80,7 +80,7 @@ const OverallBarChart = ({ performance, seriesData, lastSixMonths }) => {
             },
           ]}
           height={210}
-          margin={{ left: 50, right: 0, top: 20, bottom: 20 }}
+          margin={{ left: 30, right: 0, top: 20, bottom: 20 }}
           grid={{ horizontal: true }}
           slotProps={{
             legend: {

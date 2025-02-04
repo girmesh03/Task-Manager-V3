@@ -1,5 +1,7 @@
+import { useSelector } from "react-redux";
 import { useState } from "react";
-import { Outlet } from "react-router";
+import { Outlet, useNavigate } from "react-router";
+import { toast } from "react-toastify";
 
 import { Box, Menu, MenuItem, Stack, Typography } from "@mui/material";
 import { paperClasses } from "@mui/material/Paper";
@@ -15,9 +17,15 @@ import ColorModeIconDropdown from "../shared-theme/ColorModeIconDropdown";
 import CustomLogo from "../components/CustomLogo";
 import MenuButton from "../components/MenuButton";
 
+import { makeRequest } from "../api/apiRequest";
+import { useDispatch } from "react-redux";
+import { logout } from "../redux/features/authSlice";
+
 const AuthLayout = () => {
-  const currentUser = null;
+  const { currentUser } = useSelector((state) => state.auth);
   const [menuAnchor, setMenuAnchor] = useState(null);
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const handleMenuOpen = (event) => {
     setMenuAnchor(event.currentTarget);
@@ -27,7 +35,22 @@ const AuthLayout = () => {
     setMenuAnchor(null);
   };
 
-  const handleLogout = async () => {};
+  const handleNavigate = (route) => {
+    setMenuAnchor(null);
+    navigate(route);
+  };
+
+  const handleLogout = async () => {
+    handleMenuClose();
+    try {
+      await makeRequest.get("/auth/logout");
+      dispatch(logout());
+      toast.success("Task deleted successfully");
+    } catch (error) {
+      console.log(error.response.data.message || "An error occurred");
+      toast.error(error.response.data.message || "An error occurred");
+    }
+  };
 
   return (
     <Box width="100%" height="100%" sx={{ pt: 8 }}>
@@ -52,7 +75,7 @@ const AuthLayout = () => {
         <Stack
           direction="row"
           spacing={1}
-          onClick={() => {}}
+          onClick={() => navigate(currentUser ? "/dashboard" : "/")}
           sx={{ cursor: "pointer" }}
         >
           <CustomLogo />
@@ -101,10 +124,10 @@ const AuthLayout = () => {
               </MenuItem>
             ) : (
               <>
-                <MenuItem onClick={() => {}}>
+                <MenuItem onClick={() => handleNavigate("/login")}>
                   <LoginIcon /> Login
                 </MenuItem>
-                <MenuItem onClick={() => {}}>
+                <MenuItem onClick={() => handleNavigate("/signup")}>
                   <AccountCircleIcon /> Register
                 </MenuItem>
               </>

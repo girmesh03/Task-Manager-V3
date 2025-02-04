@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router";
+import { useSelector } from "react-redux";
 
 import { styled } from "@mui/material/styles";
 import AppBar from "@mui/material/AppBar";
@@ -31,7 +32,7 @@ const Toolbar = styled(MuiToolbar)({
 });
 
 const AppNavbar = () => {
-  const currentUser = null;
+  const { currentUser } = useSelector((state) => state.auth);
   const [open, setOpen] = useState(false);
 
   const toggleDrawer = (newOpen) => () => {
