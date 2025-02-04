@@ -12,12 +12,17 @@ import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import MoreVertRoundedIcon from "@mui/icons-material/MoreVertRounded";
 
 import MenuButton from "./MenuButton";
+import { makeRequest } from "../api/apiRequest";
+import { useDispatch } from "react-redux";
+import { logout } from "../redux/features/authSlice";
+import { toast } from "react-toastify";
 
 const MenuItem = styled(MuiMenuItem)({
   margin: "2px 0",
 });
 
 const OptionsMenu = () => {
+  const dispatch = useDispatch();
   const [anchorEl, setAnchorEl] = React.useState(null);
   const open = Boolean(anchorEl);
   const handleClick = (event) => {
@@ -28,8 +33,15 @@ const OptionsMenu = () => {
   };
 
   const handleLogout = async () => {
-    console.log("logout");
     handleClose();
+    try {
+      await makeRequest.get("/auth/logout");
+      dispatch(logout());
+      toast.success("Logged out successfully");
+    } catch (error) {
+      console.log(error.response.data.message || "An error occurred");
+      toast.error(error.response.data.message || "An error occurred");
+    }
   };
 
   return (

@@ -11,6 +11,9 @@ import CardAlert from "./CardAlert";
 import OptionsMenu from "./OptionsMenu";
 import CustomLogo from "./CustomLogo";
 
+import { useSelector } from "react-redux";
+import { useNavigate } from "react-router";
+
 const drawerWidth = 240;
 
 const Drawer = styled(MuiDrawer)({
@@ -25,6 +28,8 @@ const Drawer = styled(MuiDrawer)({
 });
 
 const SideMenu = () => {
+  const { currentUser } = useSelector((state) => state.auth);
+  const navigate = useNavigate();
   return (
     <Drawer
       variant="permanent"
@@ -48,7 +53,7 @@ const SideMenu = () => {
             "0 1px 2px 0 rgb(60 64 67 / 30%), 0 1px 3px 1px rgb(60 64 67 / 15%)",
           cursor: "pointer",
         }}
-        // onClick={() => navigate("/dashboard")}
+        onClick={() => navigate("/dashboard")}
       >
         <CustomLogo />
         <Typography variant="h4" component="h1" sx={{ color: "text.primary" }}>
@@ -71,7 +76,7 @@ const SideMenu = () => {
       >
         <Avatar
           sizes="small"
-          // alt={`${currentUser?.firstName} ${currentUser?.lastName}`}
+          alt={`${currentUser?.firstName} ${currentUser?.lastName}`}
           // src="/static/images/avatar/7.jpg"
           sx={{ width: 36, height: 36 }}
         />
@@ -80,12 +85,10 @@ const SideMenu = () => {
             variant="body2"
             sx={{ fontWeight: 500, lineHeight: "16px" }}
           >
-            {/* {`${currentUser?.firstName} ${currentUser?.lastName}`} */}
-            name
+            {`${currentUser?.firstName} ${currentUser?.lastName}`}
           </Typography>
           <Typography variant="caption" sx={{ color: "text.secondary" }}>
-            {/* {currentUser?.email} */}
-            email
+            {currentUser?.email}
           </Typography>
         </Box>
         <OptionsMenu />
