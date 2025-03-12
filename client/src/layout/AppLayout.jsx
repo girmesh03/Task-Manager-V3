@@ -11,8 +11,6 @@ import SideMenu from "../components/SideMenu";
 
 const AppLayout = () => {
   const { currentUser } = useSelector((state) => state.auth);
-  // const [searchText, setSearchText] = useState("");
-  // const [selectedDate, setSelectedDate] = useState(null);
   const location = useLocation();
 
   return (
@@ -34,11 +32,7 @@ const AppLayout = () => {
               direction="column"
               sx={{ pt: { xs: "3.75rem", md: 0 }, height: "100%" }}
             >
-              <Header
-              // setSearchText={setSearchText}
-              // selectedDate={selectedDate}
-              // setSelectedDate={setSelectedDate}
-              />
+              <Header />
               <Box
                 width="100%"
                 height="100%"
@@ -46,16 +40,10 @@ const AppLayout = () => {
                   overflow: "auto",
                   py: 2,
                   px: { xs: 1, md: 2 },
+                  "& .MuiTabPanel-root": { px: 0 },
                 }}
               >
-                <Outlet
-                // context={{
-                //   searchText,
-                //   setSearchText,
-                //   selectedDate,
-                //   setSelectedDate,
-                // }}
-                />
+                <Outlet />
               </Box>
             </Stack>
           </Box>

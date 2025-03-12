@@ -238,7 +238,7 @@ const Signup = () => {
             </Button>
             <Typography sx={{ textAlign: "center" }}>
               Already have an account?{" "}
-              <span>
+              <span style={{ color: "hsl(210, 98%, 42%)" }}>
                 <Link
                   component={Link}
                   to={{

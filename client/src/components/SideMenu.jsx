@@ -13,6 +13,8 @@ import CustomLogo from "./CustomLogo";
 
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router";
+import { useGetUserStatisticsQuery } from "../redux/features/apiSlice";
+import DepartmentMenu from "./DepartmentMenu";
 
 const drawerWidth = 240;
 
@@ -28,8 +30,23 @@ const Drawer = styled(MuiDrawer)({
 });
 
 const SideMenu = () => {
-  const { currentUser } = useSelector((state) => state.auth);
+  const { currentUser, selectedDepartment } = useSelector(
+    (state) => state.auth
+  );
+  const { selectedDate } = useSelector((state) => state.filters);
+
+  const {
+    data: userStat,
+    isLoading,
+    isError,
+  } = useGetUserStatisticsQuery({
+    selectedDepartment,
+    userId: currentUser?._id,
+    currentDate: selectedDate,
+  });
+
   const navigate = useNavigate();
+
   return (
     <Drawer
       variant="permanent"
@@ -61,13 +78,23 @@ const SideMenu = () => {
         </Typography>
       </Box>
       <Divider />
-      <MenuContent />
-      <CardAlert />
+      <Stack
+        direction="column"
+        spacing={1}
+        sx={{ p: 1, flexGrow: 1, overflowY: "auto" }}
+      >
+        <DepartmentMenu />
+        <MenuContent />
+        {!isError ? (
+          <CardAlert userStat={userStat} loading={isLoading} />
+        ) : null}
+      </Stack>
       <Stack
         direction="row"
         justifyContent="space-between"
         sx={{
-          p: 1,
+          px: 1,
+          py: 3,
           gap: 1,
           alignItems: "center",
           borderTop: "1px solid",
@@ -77,9 +104,16 @@ const SideMenu = () => {
         <Avatar
           sizes="small"
           alt={`${currentUser?.firstName} ${currentUser?.lastName}`}
-          // src="/static/images/avatar/7.jpg"
-          sx={{ width: 36, height: 36 }}
-        />
+          src={currentUser?.avatar}
+          sx={{
+            width: 36,
+            height: 36,
+            // bgcolor: deepOrange[500],
+            // color: "white",
+          }}
+        >
+          {currentUser?.firstName[0]}
+        </Avatar>
         <Box sx={{ overflow: "hidden", textOverflow: "ellipsis" }}>
           <Typography
             variant="body2"

@@ -5,16 +5,8 @@ import CardContent from "@mui/material/CardContent";
 import Typography from "@mui/material/Typography";
 import Stack from "@mui/material/Stack";
 import { BarChart } from "@mui/x-charts/BarChart";
-import { useTheme } from "@mui/material/styles";
 
 const OverallBarChart = ({ performance, seriesData, lastSixMonths }) => {
-  const theme = useTheme();
-  const colorPalette = [
-    (theme.vars || theme).palette.primary.dark,
-    (theme.vars || theme).palette.primary.main,
-    (theme.vars || theme).palette.primary.light,
-  ];
-
   return (
     <Card variant="outlined" sx={{ width: "100%" }}>
       <CardContent>
@@ -45,7 +37,7 @@ const OverallBarChart = ({ performance, seriesData, lastSixMonths }) => {
         </Stack>
         <BarChart
           borderRadius={8}
-          colors={colorPalette}
+          // colors={colorPalette}
           xAxis={[
             {
               scaleType: "band",

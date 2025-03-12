@@ -1,29 +1,33 @@
 import { Box, Typography } from "@mui/material";
 import Grid from "@mui/material/Grid2";
-import { useGetDashboardQuery } from "../redux/features/apiSlice";
 import StatisticsCard from "../components/StatisticsCard";
-import OverallProgressCard from "../components/OverallProgressCard";
 import OverallBarChart from "../components/OverallBarChart";
 import LeaderBoard from "../components/LeaderBoard";
 import { LoadingFallback } from "../components/LoadingFallback";
+import { useGetDashboardQuery } from "../redux/features/apiSlice";
+import { useSelector } from "react-redux";
 
 const Dashboard = () => {
-  const { data, isLoading } = useGetDashboardQuery();
+  const { selectedDepartment } = useSelector((state) => state.auth);
+  const { selectedDate } = useSelector((state) => state.filters);
 
-  if (isLoading) {
-    return <LoadingFallback />;
-  }
+  const { data, isLoading, isError, isSuccess } = useGetDashboardQuery({
+    selectedDepartment,
+    limit: 5,
+    currentDate: selectedDate,
+  });
+
+  if (isLoading) return <LoadingFallback />;
+  if (isError || !isSuccess) return null;
 
   const {
     statData,
-    // chartData, // unused
     seriesData,
     lastSixMonths,
     daysInLast30,
-    last30DaysOverall,
     performance,
+    leaderboard,
   } = data;
-  // console.log("daysInLast30", daysInLast30);
 
   return (
     <Box sx={{ width: "100%" }}>
@@ -36,18 +40,11 @@ const Dashboard = () => {
         columns={12}
         sx={{ mb: (theme) => theme.spacing(2) }}
       >
-        {statData.map(
-          (card, index) =>
-            card.title !== "To Do" && (
-              <Grid key={index} size={{ xs: 12, sm: 6, lg: 3 }}>
-                <StatisticsCard {...card} daysInLast30={daysInLast30} />
-              </Grid>
-            )
-        )}
-        <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-          <OverallProgressCard last30DaysOverall={last30DaysOverall} />
-        </Grid>
-
+        {statData?.map((card, index) => (
+          <Grid key={index} size={{ xs: 12, sm: 6, lg: 3 }}>
+            <StatisticsCard {...card} daysInLast30={daysInLast30} />
+          </Grid>
+        ))}
         <Grid size={{ xs: 12, md: 6 }}>
           <OverallBarChart
             performance={performance}
@@ -56,7 +53,7 @@ const Dashboard = () => {
           />
         </Grid>
         <Grid size={{ xs: 12, md: 6 }}>
-          <LeaderBoard />
+          <LeaderBoard leadersData={leaderboard || []} />
         </Grid>
       </Grid>
     </Box>

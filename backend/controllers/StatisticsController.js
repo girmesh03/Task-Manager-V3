@@ -1,19 +1,35 @@
 import asyncHandler from "express-async-handler";
-// import CustomError from "../utils/CustomError.js";
 import Task from "../models/TaskModel.js";
-
+import CustomError from "../utils/CustomError.js";
+import User from "../models/UserModel.js";
+import Department from "../models/DepartmentModel.js";
 import { calculatePerformance } from "../utils/TaskHelpers.js";
+import { getTaskStatusStatistics, getLeaderboardData } from "../utils/PipeLines.js";
+
 
 // @desc Get statistics
 // @route GET /api/statistics
 // @access Private
-const getStatistics = asyncHandler(async (req, res, next) => {
-  const today = new Date();
-  const sixMonthsAgo = new Date();
+const getDashboardStats = asyncHandler(async (req, res, next) => {
+  const { selectedDepartment, limit, currentDate } = req.query;
+
+  const department = await Department.findById(selectedDepartment);
+  if (!department) {
+    return next(new CustomError("Department not found", 404));
+  }
+
+  const today = new Date(currentDate); // Enforce local time interpretation
+  const sixMonthsAgo = new Date(currentDate);
+
+  // Check if currentDate is a valid date
+  if (isNaN(today.getTime()) || isNaN(sixMonthsAgo.getTime())) {
+    throw new CustomError("Invalid date format", 400);
+  }
+
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
 
   const last30DaysStart = new Date(today);
-  last30DaysStart.setDate(last30DaysStart.getDate() - 30);
+  last30DaysStart.setDate(last30DaysStart.getDate() - 29);
 
   const previous30DaysStart = new Date(last30DaysStart);
   previous30DaysStart.setDate(previous30DaysStart.getDate() - 30);
@@ -26,325 +42,181 @@ const getStatistics = asyncHandler(async (req, res, next) => {
     const date = new Date(last30DaysStart);
     date.setDate(date.getDate() + i);
     daysInLast30.push(
-      date.toLocaleDateString("en-US", { weekday: "short", day: "numeric" })
+      date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
     );
     return date.toISOString().split("T")[0];
   });
 
-
   try {
 
-    const statistics = await Task.aggregate([
-      // Match tasks within the last 30 days
+    const taskStatusStatistics = await getTaskStatusStatistics(
+      last30DaysStart, today, previous30DaysStart, previous30DaysEnd, dateRange, daysInLast30, department._id);
+
+    const lastSixMonthData = await Task.aggregate([
       {
+        // Match tasks within the last six months
         $match: {
-          date: { $gte: last30DaysStart, $lte: today },
+          date: { $gte: sixMonthsAgo, $lte: today },
+          department: department._id,
         },
       },
       {
+        // Add a field to represent the month in short format (e.g., Jan, Feb)
         $addFields: {
-          day: { $dateToString: { format: "%Y-%m-%d", date: "$date" } },
+          month: { $dateToString: { format: "%b", date: "$date" } },
         },
       },
       {
-        $group: {
-          _id: { status: "$status", day: "$day" },
-          count: { $sum: 1 },
-        },
-      },
-      {
-        $group: {
-          _id: "$_id.status",
-          dailyCounts: {
-            $push: {
-              day: "$_id.day",
-              count: "$count",
-            },
-          },
-          last30DaysCount: { $sum: "$count" },
-        },
-      },
-      // Lookup tasks from previous 30 days
-      {
-        $lookup: {
-          from: "tasks",
-          let: { status: "$_id" },
-          pipeline: [
-            {
-              $match: {
-                $expr: { $eq: ["$status", "$$status"] },
-                date: { $gte: previous30DaysStart, $lte: previous30DaysEnd },
-              },
-            },
-            {
-              $group: {
-                _id: null,
-                previous30DaysCount: { $sum: 1 },
-              },
-            },
-          ],
-          as: "previousData",
-        },
-      },
-      {
-        $addFields: {
-          previous30DaysCount: {
-            $ifNull: [{ $arrayElemAt: ["$previousData.previous30DaysCount", 0] }, 0],
-          },
-        },
-      },
-      {
-        $addFields: {
-          trend: {
-            $switch: {
-              branches: [
-                {
-                  case: { $eq: ["$_id", "Completed"] },
-                  then: {
-                    $cond: {
-                      if: { $gt: ["$last30DaysCount", "$previous30DaysCount"] },
-                      then: "up",
-                      else: {
-                        $cond: {
-                          if: { $lt: ["$last30DaysCount", "$previous30DaysCount"] },
-                          then: "down",
-                          else: "neutral"
-                        }
-                      }
-                    }
-                  }
-                },
-                {
-                  case: { $in: ["$_id", ["Pending", "In Progress", "To Do"]] },
-                  then: {
-                    $cond: {
-                      if: { $lt: ["$last30DaysCount", "$previous30DaysCount"] },
-                      then: "up",
-                      else: {
-                        $cond: {
-                          if: { $gt: ["$last30DaysCount", "$previous30DaysCount"] },
-                          then: "down",
-                          else: "neutral"
-                        }
-                      }
-                    }
-                  }
-                }
-              ],
-              default: "neutral"
-            }
-          },
-        },
-      },
-      // Ensure all days have data (fill missing days with 0)
-      {
-        $project: {
-          _id: 0,
-          status: "$_id",
-          last30DaysCount: 1,
-          previous30DaysCount: 1,
-          trend: 1,
-          trendChange: {
-            $cond: {
-              if: { $eq: ["$previous30DaysCount", 0] },
-              then: {
-                $cond: {
-                  if: { $eq: ["$last30DaysCount", 0] },
-                  then: 0, // No change if both are 0.
-                  else: {
-                    $cond: {
-                      if: { $eq: ["$_id", "Completed"] },
-                      then: 100, // 100% increase is good for "Completed"
-                      else: -100 // 100% increase is bad for "Pending", "In Progress", etc.
-                    }
-                  }
-                }
-              },
-              else: {
-                $let: {
-                  vars: {
-                    rawChange: {
-                      $multiply: [
-                        {
-                          $divide: [
-                            { $subtract: ["$last30DaysCount", "$previous30DaysCount"] },
-                            "$previous30DaysCount"
-                          ]
-                        },
-                        100
-                      ]
-                    }
-                  },
-                  in: {
-                    $cond: {
-                      if: { $eq: ["$_id", "Completed"] },
-                      then: "$$rawChange", // Keep sign for Completed
-                      else: { $multiply: ["$$rawChange", -1] } // Flip sign for others
-                    }
-                  }
-                }
-              }
-            }
-          },
-          data: {
-            $map: {
-              input: dateRange,
-              as: "date",
-              in: {
-                $let: {
-                  vars: {
-                    match: {
-                      $arrayElemAt: [
-                        {
-                          $filter: {
-                            input: "$dailyCounts",
-                            as: "dayData",
-                            cond: { $eq: ["$$dayData.day", "$$date"] },
-                          },
-                        },
-                        0,
-                      ],
-                    },
-                  },
-                  in: { $ifNull: ["$$match.count", 0] },
-                },
-              },
-            },
-          },
-        },
-      },
-    ]);
-
-    const last30DaysOverallStats = await Task.aggregate([
-      {
-        $match: {
-          date: { $gte: last30DaysStart, $lte: today }
-        }
-      },
-      {
-        $group: {
-          _id: "$status",
-          totalTasks: { $sum: 1 },
-        },
-      },
-    ]);
-
-    const totalTasks = last30DaysOverallStats.reduce((sum, stat) => sum + stat.totalTasks, 0);
-    const completedTasks = last30DaysOverallStats.find(stat => stat._id === "Completed")?.totalTasks || 0;
-    const overallProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-
-    const last30DaysOverall = {
-      totalTasks,
-      completedTasks,
-      overallProgress,
-    };
-
-    // Ensure all statuses are included(even if there was no data)
-    const allStatuses = ["Completed", "In Progress", "Pending", "To Do"]; // Define your status types here
-    const statData = allStatuses.map(status => {
-      const stat = statistics.find(stat => stat.status === status);
-      if (!stat) {
-        // If no data for this status, return with 0 values
-        return {
-          title: status,
-          value: "0",
-          previous30DaysCount: '0',
-          interval: "Last 30 days",
-          trend: "neutral",
-          trendChange: "0.0%",
-          data: Array(30).fill(0),
-        };
-      }
-      return {
-        title: stat.status,
-        value:
-          stat.last30DaysCount > 999
-            ? `${(stat.last30DaysCount / 1000).toFixed(1)}k`
-            : stat.last30DaysCount.toString(),
-        previous30DaysCount: stat.previous30DaysCount > 999
-          ? `${(stat.previous30DaysCount / 1000).toFixed(1)}k`
-          : stat.previous30DaysCount.toString(),
-        interval: "Last 30 days",
-        trend: stat.trend,
-        trendChange: `${stat.trendChange.toFixed(1)}%`,
-        data: stat.data,
-      };
-    });
-
-
-    const taskData = await Task.aggregate([
-      {
-        $match: {
-          date: { $gte: sixMonthsAgo, $lte: today }
-        }
-      },
-      {
+        // Group tasks by month and status, and count the occurrences
         $group: {
           _id: {
-            month: { $dateToString: { format: "%b", date: "$date" } },
-            status: "$status",
+            month: "$month", // Group by month
+            status: "$status", // Group by task status
           },
-          count: { $sum: 1 },
+          count: { $sum: 1 }, // Count the number of tasks in each group
         },
       },
       {
+        // Re-group by month and calculate task counts for each status
         $group: {
           _id: "$_id.month",
-          Completed: { $sum: { $cond: [{ $eq: ["$_id.status", "Completed"] }, "$count", 0] } },
-          "In Progress": { $sum: { $cond: [{ $eq: ["$_id.status", "In Progress"] }, "$count", 0] } },
-          Pending: { $sum: { $cond: [{ $eq: ["$_id.status", "Pending"] }, "$count", 0] } },
-          "To Do": { $sum: { $cond: [{ $eq: ["$_id.status", "To Do"] }, "$count", 0] } },
+          Completed: {
+            $sum: {
+              $cond: [{ $eq: ["$_id.status", "Completed"] }, "$count", 0], // Sum completed tasks
+            },
+          },
+          "In Progress": {
+            $sum: {
+              $cond: [{ $eq: ["$_id.status", "In Progress"] }, "$count", 0], // Sum in-progress tasks
+            },
+          },
+          Pending: {
+            $sum: {
+              $cond: [{ $eq: ["$_id.status", "Pending"] }, "$count", 0], // Sum pending tasks
+            },
+          },
+          "To Do": {
+            $sum: {
+              $cond: [{ $eq: ["$_id.status", "To Do"] }, "$count", 0], // Sum to-do tasks
+            },
+          },
         },
       },
-      { $sort: { _id: 1 } },
+      {
+        // Project the final result in a more structured form
+        $project: {
+          _id: 0, // Exclude the default _id field
+          month: "$_id", // Rename _id to month for easier access
+          Completed: 1,
+          "In Progress": 1,
+          Pending: 1,
+          "To Do": 1,
+        },
+      },
+      {
+        // Sort by month to ensure chronological order (e.g., Jan, Feb, Mar, etc.)
+        $sort: { month: 1 },
+      },
     ]);
 
+    // Get the last six months in short format (e.g., Jan, Feb, Mar, etc.)
     const lastSixMonths = [...Array(6)].map((_, i) =>
       new Date(new Date().setMonth(new Date().getMonth() - (5 - i))).toLocaleString("en-US", {
         month: "short",
       })
     );
 
-    // // Initialize data structure
-    const initialStats = lastSixMonths.reduce((acc, month) => {
-      acc[month] = { Completed: 0, "In Progress": 0, Pending: 0, "To Do": 0 };
-      return acc;
-    }, {});
-
-    taskData.forEach((item) => {
-      initialStats[item._id] = {
-        Completed: item.Completed || 0,
-        "In Progress": item["In Progress"] || 0,
-        Pending: item.Pending || 0,
-        "To Do": item["To Do"] || 0,
-      };
-    });
-
-    const chartData = lastSixMonths.map((month) => {
-      const stat = taskData.find((stat) => stat._id === month);
-      if (!stat) {
-        return {
-          _id: month,
-          ...initialStats[month],
-        }
-      }
-      return stat;
-    })
-
+    // Create an empty result structure to hold the final seriesData
     const seriesData = {
-      Completed: lastSixMonths.map((month) => initialStats[month].Completed),
-      "In Progress": lastSixMonths.map((month) => initialStats[month]["In Progress"]),
-      Pending: lastSixMonths.map((month) => initialStats[month].Pending),
-      "To Do": lastSixMonths.map((month) => initialStats[month]["To Do"]),
+      Completed: new Array(6).fill(0),
+      "In Progress": new Array(6).fill(0),
+      Pending: new Array(6).fill(0),
+      "To Do": new Array(6).fill(0),
     };
 
-    const performance = calculatePerformance(seriesData);
+    // Fill the seriesData with the aggregated results
+    lastSixMonthData.forEach((item) => {
+      const monthIndex = lastSixMonths.indexOf(item.month); // Find the index of the month
+      if (monthIndex !== -1) {
+        seriesData.Completed[monthIndex] = item.Completed || 0;
+        seriesData["In Progress"][monthIndex] = item["In Progress"] || 0;
+        seriesData.Pending[monthIndex] = item.Pending || 0;
+        seriesData["To Do"][monthIndex] = item["To Do"] || 0;
+      }
+    });
 
-    res.status(200).json({ statData, chartData, seriesData, lastSixMonths, daysInLast30, last30DaysOverall, performance });
+    const performance = calculatePerformance(seriesData);
+    const leaderboard = await getLeaderboardData(last30DaysStart, today, department._id, limit);
+
+    res.status(200).json({ statData: taskStatusStatistics, seriesData, lastSixMonths, daysInLast30, performance, leaderboard });
 
   } catch (error) {
     next(error);
   }
 });
 
-export { getStatistics };
+
+// @desc Get users statistics
+// @route GET /api/statistics/user
+// @access Private
+const getUserStatistics = asyncHandler(async (req, res, next) => {
+  try {
+    const { selectedDepartment, userId, currentDate } = req.query;
+
+    const department = await Department.findById(selectedDepartment);
+    if (!department) return next(new CustomError("Department not found", 404));
+
+    const user = await User.findById(userId);
+    if (!user) return next(new CustomError("User not found", 404));
+
+    // Check if currentDate is a valid date
+    const today = new Date(currentDate);
+    if (isNaN(today.getTime())) {
+      throw new CustomError("Invalid date format", 400);
+    }
+
+    const last30DaysStart = new Date(today);
+    last30DaysStart.setDate(last30DaysStart.getDate() - 29);
+
+    const leaderboard = await getLeaderboardData(last30DaysStart, today, department._id);
+
+    const userStat = leaderboard.find(stat => stat._id.toString() === userId) || {};
+
+    res.status(200).json(userStat);
+  } catch (error) {
+    next(error);
+  }
+});
+
+
+// @desc Get leaderboard statistics
+// @route GET /api/statistics/leaderboard
+// @access Private
+const getLeaderboardStats = asyncHandler(async (req, res, next) => {
+  try {
+
+    const { currentDate, selectedDepartment } = req.query;
+
+    const department = await Department.findById(selectedDepartment);
+    if (!department) {
+      return next(new CustomError("Department not found", 404));
+    }
+
+    // Check if currentDate is a valid date
+    const today = new Date(currentDate)
+    if (isNaN(today.getTime())) {
+      return next(new CustomError("Invalid date format", 400));
+    }
+
+    const last30DaysStart = new Date(today);
+    last30DaysStart.setDate(last30DaysStart.getDate() - 29);
+
+    const leaderboard = await getLeaderboardData(last30DaysStart, today, department._id);
+
+    res.status(200).json(leaderboard);
+  } catch (error) {
+    next(error);
+  }
+});
+
+export { getDashboardStats, getUserStatistics, getLeaderboardStats };

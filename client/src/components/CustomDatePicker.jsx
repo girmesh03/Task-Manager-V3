@@ -1,11 +1,14 @@
 import { useState } from "react";
 import PropTypes from "prop-types";
-import dayjs from "dayjs";
+// import dayjs from "dayjs";
 import Button from "@mui/material/Button";
 import CalendarTodayRoundedIcon from "@mui/icons-material/CalendarTodayRounded";
+import ClearIcon from "@mui/icons-material/Clear";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import { useDispatch } from "react-redux";
+import { setSelectedDate, clearFilters } from "../redux/features/filtersSlice";
 
 function ButtonField(props) {
   const {
@@ -13,6 +16,8 @@ function ButtonField(props) {
     label,
     id,
     disabled,
+    initialDate, // added to receive selectedDate prop
+    onClear, // added to handle clear
     InputProps: { ref } = {},
     inputProps: { "aria-label": ariaLabel } = {},
   } = props;
@@ -28,6 +33,9 @@ function ButtonField(props) {
       onClick={() => setOpen?.((prev) => !prev)}
       startIcon={<CalendarTodayRoundedIcon fontSize="small" />}
       sx={{ minWidth: "fit-content" }}
+      endIcon={
+        initialDate ? <ClearIcon fontSize="small" onClick={onClear} /> : null
+      } // Clear icon appears if date is selected
     >
       {label ? `${label}` : "Pick a date"}
     </Button>
@@ -46,34 +54,37 @@ ButtonField.propTypes = {
   }),
   label: PropTypes.node,
   setOpen: PropTypes.func,
+  initialDate: PropTypes.object, // added selectedDate prop
+  onClear: PropTypes.func, // added onClear prop
 };
 
 const CustomDatePicker = () => {
-  const [value, setValue] = useState(null); // Initial date
+  const [initialDate, setInitialDate] = useState(null); // Initial date
   const [open, setOpen] = useState(false);
 
-  const handleChange = (newValue) => {
-    setValue(newValue); // Update local state
+  const dispatch = useDispatch();
+
+  const handleOnAccept = (newDate) => {
+    const formattedDate = newDate.format("YYYY-MM-DD"); // Format as "YYYY-MM-DD"
+    dispatch(setSelectedDate(formattedDate));
+    setInitialDate(newDate);
   };
 
-  const handleOnAccept = () => {
-    if (dayjs.isDayjs(value)) {
-      // const formattedDate = value.format("YYYY-MM-DD"); // Format as "YYYY-MM-DD"
-      // setSelectedDate(formattedDate); // Pass formatted date to parent
-      setValue(null); // Optional: Clear local state
-    }
+  const handleClearSelectedDate = (event) => {
+    event.stopPropagation(); // Prevent the button from toggling the calendar
+    dispatch(clearFilters());
+    setInitialDate(null);
   };
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <DatePicker
-        value={value}
-        label={value ? value.format("YYYY-MM-DD") : "Pick a date"} // Check value validity
-        onChange={handleChange} // Call handleChange when a new date is selected
+        value={initialDate}
+        label={initialDate ? initialDate.format("DD-MM-YYYY") : "Pick a date"} // Check value validity
         onAccept={handleOnAccept}
         slots={{ field: ButtonField }}
         slotProps={{
-          field: { setOpen },
+          field: { setOpen, initialDate, onClear: handleClearSelectedDate },
           nextIconButton: { size: "small" },
           previousIconButton: { size: "small" },
         }}

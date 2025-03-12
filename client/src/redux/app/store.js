@@ -1,20 +1,22 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { persistStore, persistReducer } from 'redux-persist';
+import { persistStore, persistReducer, createTransform } from 'redux-persist';
 import storage from 'redux-persist/lib/storage'; // Use localStorage for web
 import { apiSlice } from '../features/apiSlice';
 import authReducer from '../features/authSlice';
-import createTransform from 'redux-persist/es/createTransform';
+import filtersReducer from '../features/filtersSlice';
+import errorReducer from '../features/errorSlice';
 
 // Define a transform to filter sensitive data from auth state
 const authTransform = createTransform(
   (inboundState) => {
-    // Modify the state before saving to storage
+    if (!inboundState) return {};
     return {
-      // token: inboundState.token, // Persist only the token
-      currentUser: inboundState.currentUser, // Persist user info if needed
+      currentUser: inboundState.currentUser,
+      departments: inboundState.departments,
+      selectedDepartment: inboundState.selectedDepartment,
     };
   },
-  (outboundState) => outboundState, // No transformation when rehydrating
+  (outboundState) => outboundState,
   { whitelist: ['auth'] }
 );
 
@@ -22,18 +24,17 @@ const authTransform = createTransform(
 const authPersistConfig = {
   key: 'auth',
   storage,
-  transforms: [authTransform], // Apply the filter
-  whitelist: ['currentUser'], // Persist only specific fields
-  // whitelist: ['token','currentUser'], // Persist only specific fields
+  transforms: [authTransform], // Apply the transform
 };
 
-// Wrap auth reducer with persistReducer
 const persistedAuthReducer = persistReducer(authPersistConfig, authReducer);
 
 export const store = configureStore({
   reducer: {
     [apiSlice.reducerPath]: apiSlice.reducer, // Add API reducer
     auth: persistedAuthReducer, // Persisted authentication reducer
+    filters: filtersReducer,
+    error: errorReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

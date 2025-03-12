@@ -42,11 +42,12 @@ const Login = () => {
     setShowPassword((prev) => !prev);
   };
 
-  const onSubmit = async (data) => {
+  const onSubmit = async (formData) => {
     try {
-      const response = await makeRequest.post("/auth/login", data);
-      dispatch(setCurrentUser(response.data));
-      toast.success(response.data.message);
+      const { data } = await makeRequest.post("/auth/login", formData);
+      // const { currentUser, departments, selectedDepartment } = data;
+      dispatch(setCurrentUser(data));
+      toast.success(data.message);
       reset();
       navigate("/dashboard", { replace: true });
     } catch (error) {
@@ -165,7 +166,7 @@ const Login = () => {
             </Button>
             <Typography sx={{ textAlign: "center" }}>
               Don&apos;t have an account?{" "}
-              <span>
+              <span style={{ color: "hsl(210, 98%, 42%)" }}>
                 <Link
                   component={Link}
                   to={{
