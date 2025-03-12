@@ -86,7 +86,7 @@ const users = [
   },
   {
     firstName: "Giduma",
-    lastName: "Turi Beyene",
+    lastName: "Turi",
     position: "Painter",
     email: "giduma@gmail.com",
     password: "12345",
@@ -94,7 +94,7 @@ const users = [
   },
   {
     firstName: "Sisay",
-    lastName: "Lema Ligaba",
+    lastName: "Lema",
     position: "Painter",
     email: "sisay@gmail.com",
     password: "12345",
@@ -102,7 +102,7 @@ const users = [
   },
   {
     firstName: "Wakuma",
-    lastName: "chimidi Negera",
+    lastName: "chimidi",
     position: "Painter",
     email: "wakuma@gmail.com",
     password: "12345",
@@ -134,7 +134,7 @@ const users = [
   },
   {
     firstName: "Feyesa",
-    lastName: "Daba Hunduma",
+    lastName: "Daba",
     position: "Lift Attendant",
     email: "feyesa@gmail.com",
     password: "12345",

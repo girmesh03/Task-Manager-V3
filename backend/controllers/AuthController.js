@@ -1,8 +1,11 @@
 import asyncHandler from "express-async-handler";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
+import jwt from "jsonwebtoken";
 import CustomError from "../utils/CustomError.js";
 import User from "../models/UserModel.js";
+import Department from "../models/DepartmentModel.js";
+
 import {
   sendVerificationEmail,
   sendResetPasswordEmail,
@@ -17,7 +20,12 @@ import {
 // @route POST /api/auth/signup
 // @access Public
 const signup = asyncHandler(async (req, res, next) => {
-  const { firstName, lastName, email, password, position } = req.body;
+  const { firstName, lastName, email, password, position, departmentId } = req.body;
+
+  const department = await Department.findById(departmentId);
+  if (!department) {
+    return next(new CustomError("Department not found", 404));
+  }
 
   // Check if user already exists
   const userExists = await User.findOne({ email });
@@ -37,6 +45,7 @@ const signup = asyncHandler(async (req, res, next) => {
     email,
     password,
     position,
+    department: department._id,
     verificationToken,
     verificationTokenExpiry: Date.now() + 3600000, // 1 hour expiration
   });
@@ -110,10 +119,14 @@ const login = asyncHandler(async (req, res, next) => {
   generateRefreshToken(res, user);
 
   // Prepare response
-  const response = await User.findById(user._id).select("-password");
-
+  const response = await User.findById(user._id).select("-password").populate("department", "name");
+  const departments = await Department.find({});
   // Send response
-  res.status(200).json(response);
+  res.status(200).json({
+    currentUser: response,
+    departments,
+    selectedDepartment: response?.department?._id
+  });
 });
 
 // @desc Logout
@@ -203,4 +216,33 @@ const resetPassword = asyncHandler(async (req, res, next) => {
   });
 });
 
-export { signup, verifyEmail, login, logout, forgotPassword, resetPassword };
+// @desc Get refresh token
+// @route GET /api/auth/refresh
+// @access Public
+const getRefreshToken = asyncHandler(async (req, res, next) => {
+  const refreshToken = req.cookies.refresh_token; // Get refresh token from cookies
+
+  if (!refreshToken) {
+    return next(new CustomError('Forbidden: No refresh token provided', 403));
+  }
+
+  try {
+    // Verify refresh token
+    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+
+    // Find user
+    const user = await User.findById(decoded._id);
+    if (!user) {
+      return next(new CustomError('Forbidden: Invalid or expired refresh token', 403));
+    }
+
+    // Generate new access token
+    generateAccessToken(res, user);
+
+    res.status(200).json({ message: 'Access token refreshed' });
+  } catch (error) {
+    next(error);
+  }
+})
+
+export { signup, verifyEmail, login, logout, forgotPassword, resetPassword, getRefreshToken };
