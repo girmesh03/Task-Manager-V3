@@ -1,8 +1,6 @@
 import PropTypes from "prop-types";
 import { useTheme } from "@mui/material/styles";
-import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
-import CardContent from "@mui/material/CardContent";
 import Chip from "@mui/material/Chip";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
@@ -67,51 +65,55 @@ const StatisticsCard = ({
   };
 
   return (
-    <Card variant="outlined" sx={{ height: "100%", flexGrow: 1 }}>
-      <CardContent>
-        <Typography component="h2" variant="subtitle2" gutterBottom>
+    <Card variant="outlined">
+      <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
+        <Typography component="h2" variant="subtitle2">
           {title}
         </Typography>
+        <Typography variant="caption" sx={{ pt: 0.1, color: "text.secondary" }}>
+          {interval}
+        </Typography>
+      </Stack>
+      <Stack direction="column" spacing={1}>
         <Stack
-          direction="column"
-          sx={{ justifyContent: "space-between", flexGrow: "1" }}
+          direction="row"
+          sx={{ justifyContent: "space-between", alignItems: "center" }}
         >
-          <Stack sx={{ justifyContent: "space-between" }}>
-            <Stack
-              direction="row"
-              sx={{ justifyContent: "space-between", alignItems: "center" }}
+          <Stack direction="row" spacing={0.5}>
+            <Typography variant="h4">{value}</Typography>
+            <Typography
+              variant="caption"
+              sx={{ color: "text.secondary", alignSelf: "flex-end", pb: 0.5 }}
             >
-              <Typography variant="h4" component="p">
-                {value}
-              </Typography>
-              <Chip size="small" color={color} label={trendValues[trend]} />
-            </Stack>
+              {previous30DaysCount}
+            </Typography>
           </Stack>
-          <Typography variant="caption" sx={{ color: "text.secondary" }}>
-            Previous {`${interval}: ${previous30DaysCount}`}
-          </Typography>
-          <Box sx={{ width: "100%", height: 50 }}>
-            <SparkLineChart
-              colors={[chartColor]}
-              data={data}
-              area
-              showHighlight
-              showTooltip
-              xAxis={{
-                scaleType: "band",
-                data: daysInLast30, // Use last 30 days for the x-axis
-              }}
-              sx={{
-                [`& .${areaElementClasses.root}`]: {
-                  fill: `url(#area-gradient-${value})`,
-                },
-              }}
-            >
-              <AreaGradient color={chartColor} id={`area-gradient-${value}`} />
-            </SparkLineChart>
-          </Box>
+          <Chip size="small" color={color} label={trendValues[trend]} />
         </Stack>
-      </CardContent>
+        {/* <Typography variant="caption" sx={{ color: "text.secondary" }}>
+          Previous {`${interval}: ${previous30DaysCount}`}
+        </Typography> */}
+        <SparkLineChart
+          colors={[chartColor]}
+          data={data}
+          area
+          showHighlight
+          showTooltip
+          curve="natural"
+          height={30}
+          xAxis={{
+            scaleType: "band",
+            data: daysInLast30,
+          }}
+          sx={{
+            [`& .${areaElementClasses.root}`]: {
+              fill: `url(#area-gradient-${value})`,
+            },
+          }}
+        >
+          <AreaGradient color={chartColor} id={`area-gradient-${value}`} />
+        </SparkLineChart>
+      </Stack>
     </Card>
   );
 };

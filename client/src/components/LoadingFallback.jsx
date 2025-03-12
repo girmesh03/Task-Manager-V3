@@ -1,5 +1,5 @@
 import PropTypes from "prop-types";
-import { Box, CircularProgress } from "@mui/material";
+import { Box, Backdrop, CircularProgress } from "@mui/material";
 
 export const RootFallback = () => {
   return (
@@ -10,9 +10,29 @@ export const RootFallback = () => {
       justifyContent="center"
       alignItems="center"
     >
-      <CircularProgress size={50} />
+      <CircularProgress size={50} disableShrink />
     </Box>
   );
+};
+
+export const CustomBackdrop = ({ open, handleClose = () => {} }) => {
+  return (
+    <Backdrop
+      sx={(theme) => ({
+        color: theme.palette.primary.main,
+        zIndex: theme.zIndex.drawer + 1,
+      })}
+      open={open}
+      onClick={handleClose}
+    >
+      <CircularProgress size={50} disableShrink />
+    </Backdrop>
+  );
+};
+
+CustomBackdrop.propTypes = {
+  open: PropTypes.bool.isRequired,
+  handleClose: PropTypes.func,
 };
 
 export const LoadingFallback = ({ height = "100%" }) => {
@@ -24,7 +44,7 @@ export const LoadingFallback = ({ height = "100%" }) => {
       justifyContent="center"
       alignItems="center"
     >
-      <CircularProgress size={50} />
+      <CircularProgress size={50} disableShrink />
     </Box>
   );
 };

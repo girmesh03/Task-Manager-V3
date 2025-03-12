@@ -1,4 +1,7 @@
-import * as React from "react";
+import React, { useState } from "react";
+import { Link } from "react-router";
+import { toast } from "react-toastify";
+
 import { styled } from "@mui/material/styles";
 import Divider, { dividerClasses } from "@mui/material/Divider";
 import Menu from "@mui/material/Menu";
@@ -13,21 +16,24 @@ import MoreVertRoundedIcon from "@mui/icons-material/MoreVertRounded";
 
 import MenuButton from "./MenuButton";
 import { makeRequest } from "../api/apiRequest";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { logout } from "../redux/features/authSlice";
-import { toast } from "react-toastify";
 
 const MenuItem = styled(MuiMenuItem)({
   margin: "2px 0",
 });
 
 const OptionsMenu = () => {
+  const { currentUser } = useSelector((state) => state.auth);
+
   const dispatch = useDispatch();
-  const [anchorEl, setAnchorEl] = React.useState(null);
+  const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
+
   const handleClick = (event) => {
     setAnchorEl(event.currentTarget);
   };
+
   const handleClose = () => {
     setAnchorEl(null);
   };
@@ -39,7 +45,6 @@ const OptionsMenu = () => {
       dispatch(logout());
       toast.success("Logged out successfully");
     } catch (error) {
-      console.log(error.response.data.message || "An error occurred");
       toast.error(error.response.data.message || "An error occurred");
     }
   };
@@ -73,12 +78,24 @@ const OptionsMenu = () => {
           },
         }}
       >
-        <MenuItem onClick={handleClose}>Profile</MenuItem>
-        <MenuItem onClick={handleClose}>My account</MenuItem>
+        <MenuItem
+          component={Link}
+          to={`/users/${currentUser?._id}/details`}
+          onClick={handleClose}
+        >
+          Profile
+        </MenuItem>
         <Divider />
-        <MenuItem onClick={handleClose}>Add another account</MenuItem>
-        <MenuItem onClick={handleClose}>Settings</MenuItem>
+        <MenuItem
+          component={Link}
+          to={`/users/${currentUser?._id}/admin`}
+          onClick={handleClose}
+        >
+          Admin control Panel
+        </MenuItem>
         <Divider />
+        {currentUser.role === "admin" && <React.Fragment></React.Fragment>}
+
         <MenuItem
           onClick={handleLogout}
           sx={{

@@ -1,28 +1,37 @@
-// import PropTypes from "prop-types";
 import { useState } from "react";
+import { useDispatch } from "react-redux";
+import { setSearchText, clearFilters } from "../redux/features/filtersSlice";
 import FormControl from "@mui/material/FormControl";
 import InputAdornment from "@mui/material/InputAdornment";
 import OutlinedInput from "@mui/material/OutlinedInput";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
+import ClearIcon from "@mui/icons-material/Clear"; // Import Clear icon
 
 const Search = () => {
-  const [value, setValue] = useState("");
+  const [searchValue, setSearchValue] = useState("");
+  const dispatch = useDispatch();
 
   const handleChange = (event) => {
-    setValue(event.target.value);
+    setSearchValue(event.target.value);
   };
 
   const handleKeyPress = (event) => {
     if (event.key === "Enter") {
-      // setSearchText(value.trim().replace(/" "/g, ""));
-      setValue("");
+      const newValue = searchValue.trim().replace(/" "/g, "");
+      dispatch(setSearchText(newValue));
+      setSearchValue(""); // Clear search value after submitting
     }
+  };
+
+  const handleClear = () => {
+    setSearchValue(""); // Clear the input field
+    dispatch(clearFilters()); // Reset the filters in the Redux store
   };
 
   return (
     <FormControl sx={{ width: { xs: "100%", md: "25ch" } }} variant="outlined">
       <OutlinedInput
-        value={value}
+        value={searchValue}
         onChange={handleChange}
         onKeyDown={handleKeyPress}
         size="small"
@@ -34,6 +43,17 @@ const Search = () => {
             <SearchRoundedIcon fontSize="small" />
           </InputAdornment>
         }
+        endAdornment={
+          searchValue && (
+            <InputAdornment position="end">
+              <ClearIcon
+                fontSize="small"
+                onClick={handleClear}
+                sx={{ cursor: "pointer" }}
+              />
+            </InputAdornment>
+          )
+        }
         inputProps={{
           "aria-label": "search",
         }}
@@ -42,7 +62,4 @@ const Search = () => {
   );
 };
 
-Search.propTypes = {
-  // setSearchText: PropTypes.func.isRequired,
-};
 export default Search;
